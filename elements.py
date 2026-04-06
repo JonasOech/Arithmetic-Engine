@@ -19,24 +19,21 @@ class Variable(Element):
 class Expression(Element):
     type : str
     Numelements : int
-    order : int # determines order of operation. Higher order means executed first
+    priority : int # determines order of operation. Higher order means executed first
 
     def __init__(self, type: str):
         self.type = type
 
         match type:
             case "+"|"-": 
-                self.order = 0
+                self.priority = 0
                 self.Numelements = 2
             case "*"|"/":
-                self.order = 1
+                self.priority = 1
                 self.Numelements = 2
             case "^": 
-                self.order = 2
+                self.priority = 2
                 self.Numelements = 2
             case "("|")":
-                self.order = 3
+                self.priority = 3
                 self.Numelements = int("inf")
-
-
-    

@@ -14,18 +14,32 @@ class Parser:
         
         """            
         output = Tree()
-        stack = []
+        stack = [] # All elements will be pushed to the stack. The tree will be built in the stack
 
-        list = formula.split(' ') # Make array
-        
-        
+        form = formula.split(' ') # Make list of all expressions (Later replace with tokenizer)
+        form = [for x in form: classify_element(x))] # List now of element objects
+
+        output = _apply_expressions(form, 4)
+
+
+    def _apply_expressions(self, formula:list[Constant|Variable|Expression], prio:int) -> Tree:
+        """
+        Recursively applies expressions of a select prio and downwards
+        """
+
+        if not max(x) for x in [element in formula if type(element) == Expression] == prio:
+            return _apply_expressions(formula, prio-1)
+
+        for element in formula:
+            if type(element) == Expression and element.priority == prio:
+
     
     def classify_element(self, element:str="x1") -> Constant|Variable|Expression:
         if ReSearch("\d+", element):
             return Constant(int(element))
         elif ReSearch("x\d", element):
             return Variable(element)
-        elif ReSearch("\*|\+|\-|\/", element):
+        elif ReSearch("\*|\+|\-|\/|\(", element):
             return Expression(element)
         
         else:
