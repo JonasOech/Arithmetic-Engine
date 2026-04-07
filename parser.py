@@ -172,7 +172,7 @@ class Parser:
 
     
     def _classify_element(self, element:str="x1") -> Constant|Variable|Expression|Function|AnyNode:
-        if ReSearch(r"^x\d", element):
+        if ReSearch(r"^x\d*$|^[a-z]$", element):
             return Variable(element)
         elif ReSearch(r"^\d+", element):
             return Constant(int(element))
