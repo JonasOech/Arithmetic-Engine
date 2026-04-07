@@ -301,6 +301,163 @@ class TestApply:
             assert returned_tree is original
 
 
+# ── Mathematical identities ─────────────────────────────────────────
+
+
+class TestMathIdentities:
+    """Ten mathematically correct transformations applied to matching trees."""
+
+    # 1. Multiplicative identity: a * 1 = a
+    def test_multiplicative_identity_init(self):
+        t = Transformation("a * 1 = a")
+        assert t.pre.name == "*"
+        assert t.pre.children[1].name == "1"
+        assert t.post.name == "a"
+
+    def test_multiplicative_identity_apply(self):
+        t = Transformation("a * 1 = a")
+        tree = Parser().parse_from_txt("x1 * 1")
+        result, post = t.apply(tree)
+        assert result is True
+        assert post.name == "a"
+
+    # 2. Multiplicative zero: a * 0 = 0
+    def test_multiplicative_zero_init(self):
+        t = Transformation("a * 0 = 0")
+        assert t.pre.name == "*"
+        assert t.post.name == "0"
+
+    def test_multiplicative_zero_apply(self):
+        t = Transformation("a * 0 = 0")
+        tree = Parser().parse_from_txt("x1 * 0")
+        result, post = t.apply(tree)
+        assert result is True
+        assert post.name == "0"
+
+    # 3. Exponent zero: a ^ 0 = 1
+    def test_exponent_zero_init(self):
+        t = Transformation("a ^ 0 = 1")
+        assert t.pre.name == "^"
+        assert t.pre.children[1].name == "0"
+        assert t.post.name == "1"
+
+    def test_exponent_zero_apply(self):
+        t = Transformation("a ^ 0 = 1")
+        tree = Parser().parse_from_txt("x1 ^ 0")
+        result, post = t.apply(tree)
+        assert result is True
+        assert post.name == "1"
+
+    # 4. Distributive law: a * ( b + c ) = a * b + a * c
+    def test_distributive_init(self):
+        t = Transformation("a * ( b + c ) = a * b + a * c")
+        assert t.pre.name == "*"
+        assert t.pre.children[1].name == "+"
+        assert t.post.name == "+"
+        assert t.post.children[0].name == "*"
+        assert t.post.children[1].name == "*"
+
+    def test_distributive_apply(self):
+        t = Transformation("a * ( b + c ) = a * b + a * c")
+        tree = Parser().parse_from_txt("x1 * ( x2 + x3 )")
+        result, post = t.apply(tree)
+        assert result is True
+        assert post.name == "+"
+
+    # 5. Binomial square (sum): ( a + b ) ^ 2 = a ^ 2 + 2 a b + b ^ 2
+    def test_binomial_square_sum_init(self):
+        t = Transformation("( a + b ) ^ 2 = a ^ 2 + 2 a b + b ^ 2")
+        assert t.pre.name == "^"
+        assert t.pre.children[0].name == "+"
+        assert t.pre.children[1].name == "2"
+        assert t.post.name == "+"
+
+    def test_binomial_square_sum_apply(self):
+        t = Transformation("( a + b ) ^ 2 = a ^ 2 + 2 a b + b ^ 2")
+        tree = Parser().parse_from_txt("( x1 + x2 ) ^ 2")
+        result, post = t.apply(tree)
+        assert result is True
+        assert post.name == "+"
+
+    # 6. Binomial square (difference): ( a - b ) ^ 2 = a ^ 2 - 2 a b + b ^ 2
+    def test_binomial_square_diff_init(self):
+        t = Transformation("( a - b ) ^ 2 = a ^ 2 - 2 a b + b ^ 2")
+        assert t.pre.name == "^"
+        assert t.pre.children[0].name == "-"
+
+    def test_binomial_square_diff_apply(self):
+        t = Transformation("( a - b ) ^ 2 = a ^ 2 - 2 a b + b ^ 2")
+        tree = Parser().parse_from_txt("( x1 - x2 ) ^ 2")
+        result, post = t.apply(tree)
+        assert result is True
+        assert post.name == "+"
+
+    # 7. Difference of squares: a ^ 2 - b ^ 2 = ( a + b ) * ( a - b )
+    def test_difference_of_squares_init(self):
+        t = Transformation("a ^ 2 - b ^ 2 = ( a + b ) * ( a - b )")
+        assert t.pre.name == "-"
+        assert t.pre.children[0].name == "^"
+        assert t.pre.children[1].name == "^"
+        assert t.post.name == "*"
+        assert t.post.children[0].name == "+"
+        assert t.post.children[1].name == "-"
+
+    def test_difference_of_squares_apply(self):
+        t = Transformation("a ^ 2 - b ^ 2 = ( a + b ) * ( a - b )")
+        tree = Parser().parse_from_txt("x1 ^ 2 - x2 ^ 2")
+        result, post = t.apply(tree)
+        assert result is True
+        assert post.name == "*"
+
+    # 8. Log of product: log ( a * b ) = log ( a ) + log ( b )
+    def test_log_product_init(self):
+        t = Transformation("log ( a * b ) = log ( a ) + log ( b )")
+        assert t.pre.name == "log"
+        assert t.pre.children[0].name == "*"
+        assert t.post.name == "+"
+        assert t.post.children[0].name == "log"
+        assert t.post.children[1].name == "log"
+
+    def test_log_product_apply(self):
+        t = Transformation("log ( a * b ) = log ( a ) + log ( b )")
+        tree = Parser().parse_from_txt("log ( x1 * x2 )")
+        result, post = t.apply(tree)
+        assert result is True
+        assert post.name == "+"
+
+    # 9. Power of product: ( a * b ) ^ c = a ^ c * b ^ c
+    def test_power_of_product_init(self):
+        t = Transformation("( a * b ) ^ c = a ^ c * b ^ c")
+        assert t.pre.name == "^"
+        assert t.pre.children[0].name == "*"
+        assert t.post.name == "*"
+        assert t.post.children[0].name == "^"
+        assert t.post.children[1].name == "^"
+
+    def test_power_of_product_apply(self):
+        t = Transformation("( a * b ) ^ c = a ^ c * b ^ c")
+        tree = Parser().parse_from_txt("( x1 * x2 ) ^ x3")
+        result, post = t.apply(tree)
+        assert result is True
+        assert post.name == "*"
+
+    # 10. Exponent addition: a ^ b * a ^ c = a ^ ( b + c )
+    def test_exponent_addition_init(self):
+        t = Transformation("a ^ b * a ^ c = a ^ ( b + c )")
+        assert t.pre.name == "*"
+        assert t.pre.children[0].name == "^"
+        assert t.pre.children[1].name == "^"
+        assert t.post.name == "^"
+        assert t.post.children[1].name == "+"
+
+    def test_exponent_addition_apply(self):
+        t = Transformation("a ^ b * a ^ c = a ^ ( b + c )")
+        tree = Parser().parse_from_txt("x1 ^ x2 * x1 ^ x3")
+        result, post = t.apply(tree)
+        assert result is True
+        assert post.name == "^"
+
+
 # ── Axiom ───────────────────────────────────────────────────────────
 
 

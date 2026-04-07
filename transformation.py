@@ -7,11 +7,11 @@ class Transformation:
     pre             : AnyNode # a^2 + b^2
     post            : AnyNode # c^2
     id              : int
-    placeholders    : dict[str, AnyNode]
-    safe            : bool
+    string          : str
 
     def __init__(self, equality : str):
         equalitylist = equality.split("=")
+        self.string = equality
         assert len(equalitylist) == 2
 
         self.pre, self.post = cast(list[AnyNode], Parser().parse_from_txt(equalitylist))
@@ -20,6 +20,9 @@ class Transformation:
         for element in PreOrderIter(self.post):
             if isinstance(element, Variable):
                 element = Placeholder(str(element)) # Replaces all variables with Placeholders of the same Id
+    
+    def __str__(self):
+        return self.string
 
     def apply(self, tree:AnyNode) -> tuple[bool, AnyNode]:
         """Will check if the transformation is applicable. If yes, Will apply the given transformation to the root of tree.

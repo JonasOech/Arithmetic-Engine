@@ -31,6 +31,14 @@ class Parser:
         output = self._apply_expressions(form)[0]
         return output 
 
+    def parse_to_txt(self, tree:AnyNode) -> str:
+        out = str(tree.element)
+        if not tree.is_leaf:
+            out = self.parse_to_txt(tree.children[0]) + out
+        if tree.children[1]:
+            out = out + self.parse_to_txt(tree.children[1])
+        return out
+
     def _apply_expressions(self, formula:list[AnyNode|Expression|Function]) -> list[AnyNode]:
         """
         applies expressions recursively
