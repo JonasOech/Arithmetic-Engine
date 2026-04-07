@@ -32,6 +32,12 @@ class TestClassifyElement:
 
     def test_variable_x0(self, p):
         assert isinstance(p._classify_element("x0"), Variable)
+    
+    def test_variable_a(self, p):
+        assert isinstance(p._classify_element("a"), Variable)
+
+    def test_variable_z(self, p):
+        assert isinstance(p._classify_element("z"), Variable)
 
     def test_constant_integer(self, p):
         assert isinstance(p._classify_element("42"), Constant)
