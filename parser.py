@@ -1,6 +1,7 @@
 from anytree import AnyNode
 from elements import Constant, Variable, Expression, Function
 from re import search as ReSearch
+from typing import cast
 
 class Parser:
     def parse_from_txt(self, formula:str= "x1 * ( x2 + x3 )"):
@@ -24,12 +25,13 @@ class Parser:
         for i in range(len(form)): 
             if type(form[i]) in [Constant, Variable]:
                 form[i] = AnyNode(name = str(form[i]), element = i)
+        form = cast(list[AnyNode|Expression|Function], form)
 
         # If everything succeded, it's a list with just a tree
-        output = self._apply_expressions(form) 
+        output = self._apply_expressions(form)[0]
         return output 
 
-    def _apply_expressions(self, formula:list[AnyNode|Expression|Function]) -> list[AnyNode]|AnyNode:
+    def _apply_expressions(self, formula:list[AnyNode|Expression|Function]) -> list[AnyNode]:
         """
         applies expressions recursively
         """
@@ -121,10 +123,9 @@ class Parser:
 
             
         # If we arrive here, none of the above operations were made. Check if we are done.
-        if len(formula) == 1:
-            return formula[0]
-        else:
-            raise Exception("Didn't work")
+        if len(formula) == 1 and isinstance(formula[0], AnyNode):
+            return cast(list[AnyNode], formula)
+        raise Exception("Didn't work")
 
 
         
@@ -168,7 +169,6 @@ class Parser:
         return formula, False
 
          
-
 
     
     def _classify_element(self, element:str="x1") -> Constant|Variable|Expression|Function|AnyNode:
