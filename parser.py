@@ -4,7 +4,7 @@ from re import search as ReSearch
 from typing import cast
 
 class Parser:
-    def parse_from_txt(self, formula:str= "x1 * ( x2 + x3 )"):
+    def parse_from_txt(self, formula:str| list[str] = "x1 * ( x2 + x3 )") -> AnyNode|list[AnyNode]:
         """_summary_
         Accepts input of formulas in text form.
         Variables: x1, x2, x3, ...
@@ -14,17 +14,17 @@ class Parser:
             _type_: Tree Object
         
         """            
-        # output = Node()
-        stack = [] # All elements will be pushed to the stack. The tree will be built in the stack
+        if type(formula) == list:
+            return [cast(AnyNode, self.parse_from_txt(i)) for i in formula]
 
-        form = formula.strip().split(' ') # Make list of all expressions (Later replace with tokenizer TODO)
+        form = cast(str, formula).strip().split(' ') # Make list of all expressions (Later replace with tokenizer TODO)
 
         form = [self._classify_element(x) for x in form] # List now of element objects
         
         # replace every const and var with a AnyNode
         for i in range(len(form)): 
             if type(form[i]) in [Constant, Variable]:
-                form[i] = AnyNode(name = str(form[i]), element = i)
+                form[i] = AnyNode(name = str(form[i]), element = form[i])
         form = cast(list[AnyNode|Expression|Function], form)
 
         # If everything succeded, it's a list with just a tree
@@ -35,14 +35,11 @@ class Parser:
         """
         applies expressions recursively
         """
-        formulacopy = formula
-
-        
         # Apply functions , but just "F ( S )"
-        for i in range(len(formulacopy)):
+        for i in range(len(formula)):
             # Perform type safety
             if not (
-                i + 3 <= len(formula) and # avoid index errors
+                i + 3 < len(formula) and # avoid index errors
                 type(formula[i]) == Function and
                 type(formula[i+1]) == Expression and 
                 type(formula[i+2]) == AnyNode and
@@ -63,7 +60,7 @@ class Parser:
             return self._apply_expressions(formula)
 
         # Apply Parentheses, but just "( S )"
-        for i in range(len(formulacopy)):
+        for i in range(len(formula)):
             # Perform type safety
             if not (
                 i + 2 < len(formula) and # avoid index errors
@@ -93,7 +90,7 @@ class Parser:
             return self._apply_expressions(formula)
 
         # Apply Multiplication "S S"
-        for i in range(len(formulacopy)):
+        for i in range(len(formula)):
             if not ( 
                     i+1 < len(formula) and
                     # S S
@@ -172,9 +169,9 @@ class Parser:
 
     
     def _classify_element(self, element:str="x1") -> Constant|Variable|Expression|Function|AnyNode:
-        if ReSearch(r"^x\d", element):
+        if ReSearch(r"^x\d*$|^[a-z]$", element):
             return Variable(element)
-        elif ReSearch(r"^\d+", element):
+        elif ReSearch(r"^\d+$", element):
             return Constant(int(element))
         elif ReSearch(r"^[\*\+\-\/\(\)\^]$", element):
             return Expression(element)
