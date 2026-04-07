@@ -1,8 +1,8 @@
-from math import inf
-
-
 class Element:
     tag : str 
+
+    def __init__(self):
+        raise NotImplementedError("Cant use the Element object by its own.")
 
     def __str__(self):
         raise NotImplementedError
@@ -16,6 +16,9 @@ class Constant(Element):
     def __str__(self):
         return str(self.value)
 
+    def __eq__(self, other):
+        return isinstance(other, Constant) and self.value == other.value
+
 class Variable(Element):
     id : str
 
@@ -25,30 +28,22 @@ class Variable(Element):
     def __str__(self):
         return str(self.id)
 
+    def __eq__(self, other):
+        return isinstance(other, Variable) and self.id == other.id
+
 
 class Expression(Element):
     type : str
     Numelements : int
-    priority : int # determines order of operation. Higher order means executed first
 
     def __init__(self, type: str):
         self.type = type
 
-        match type:
-            case "+"|"-": 
-                self.priority = 0
-                self.Numelements = 2
-            case "*"|"/":
-                self.priority = 1
-                self.Numelements = 2
-            case "^": 
-                self.priority = 2
-                self.Numelements = 2
-            case "("|")":
-                self.priority = 3
-    
     def __str__(self):
         return str(self.type)
+
+    def __eq__(self, other):
+        return isinstance(other, Expression) and self.type == other.type
 
 class Function(Element):
     type : str
@@ -59,4 +54,15 @@ class Function(Element):
     
     def __str__(self):
         return str(self.type)
+
+    def __eq__(self, other):
+        return isinstance(other, Function) and self.type == other.type
     
+class Placeholder(Element):
+    id : str
+
+    def __init__(self, id:str):
+        self.id = id
+
+    def __str__(self):
+        return str(self.id)
