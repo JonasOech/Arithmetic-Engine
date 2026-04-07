@@ -1,5 +1,6 @@
 import pytest
-from anytree import AnyNode, RenderTree
+from anytree import AnyNode, RenderTree, PreOrderIter, PostOrderIter, LevelOrderIter
+from anytree.search import findall, find_by_attr
 from parser import Parser
 from elements import Constant, Variable, Expression, Function
 
@@ -548,3 +549,229 @@ class TestComplex:
         assert tree.name == "+"
         assert tree.children[0].name == "sin"
         assert tree.children[1].name == "5"
+
+
+# ── Tree iteration & structure ──────────────────────────────────────
+
+class TestTreeIteration:
+    """Tests using anytree iterators, search, and node properties."""
+
+    # ── Node counts ─────────────────────────────────────────────────
+
+    def test_single_var_node_count(self, p):
+        tree = p.parse_from_txt("x1")
+        assert len(list(PreOrderIter(tree))) == 1
+
+    def test_binary_op_node_count(self, p):
+        tree = p.parse_from_txt("x1 + x2")
+        assert len(list(PreOrderIter(tree))) == 3
+
+    def test_chained_add_node_count(self, p):
+        # x1 + x2 + x3  ->  ((x1+x2)+x3)  = 5 nodes
+        tree = p.parse_from_txt("x1 + x2 + x3")
+        assert len(list(PreOrderIter(tree))) == 5
+
+    def test_function_node_count(self, p):
+        # sin(x1) = 2 nodes
+        tree = p.parse_from_txt("sin ( x1 )")
+        assert len(list(PreOrderIter(tree))) == 2
+
+    def test_function_of_expr_node_count(self, p):
+        # sin(x1+x2) = sin -> + -> x1,x2  = 4 nodes
+        tree = p.parse_from_txt("sin ( x1 + x2 )")
+        assert len(list(PreOrderIter(tree))) == 4
+
+    def test_complex_expr_node_count(self, p):
+        # x1 * x2 + x3 * x4  ->  +(*(x1,x2), *(x3,x4))  = 7 nodes
+        tree = p.parse_from_txt("x1 * x2 + x3 * x4")
+        assert len(list(PreOrderIter(tree))) == 7
+
+    def test_full_precedence_node_count(self, p):
+        # x1 + x2 * x3 ^ x4  ->  +(x1, *(x2, ^(x3,x4)))  = 7 nodes
+        tree = p.parse_from_txt("x1 + x2 * x3 ^ x4")
+        assert len(list(PreOrderIter(tree))) == 7
+
+    # ── Tree height & depth ─────────────────────────────────────────
+
+    def test_single_var_height(self, p):
+        tree = p.parse_from_txt("x1")
+        assert tree.height == 0
+
+    def test_binary_op_height(self, p):
+        tree = p.parse_from_txt("x1 + x2")
+        assert tree.height == 1
+
+    def test_chained_add_height(self, p):
+        # ((x1+x2)+x3) -> height 2
+        tree = p.parse_from_txt("x1 + x2 + x3")
+        assert tree.height == 2
+
+    def test_precedence_chain_height(self, p):
+        # x1 + x2 * x3 ^ x4  ->  +(x1, *(x2, ^(x3,x4)))  -> height 3
+        tree = p.parse_from_txt("x1 + x2 * x3 ^ x4")
+        assert tree.height == 3
+
+    def test_leaf_depth(self, p):
+        tree = p.parse_from_txt("x1 + x2 * x3")
+        # x3 is at depth 2: + -> * -> x3
+        x3 = find_by_attr(tree, "x3")
+        assert x3.depth == 2
+
+    def test_root_depth_is_zero(self, p):
+        tree = p.parse_from_txt("x1 + x2")
+        assert tree.depth == 0
+
+    # ── Leaves ──────────────────────────────────────────────────────
+
+    def test_binary_leaves(self, p):
+        tree = p.parse_from_txt("x1 + x2")
+        leaf_names = [n.name for n in tree.leaves]
+        assert leaf_names == ["x1", "x2"]
+
+    def test_complex_leaves(self, p):
+        tree = p.parse_from_txt("x1 * x2 + x3 * x4")
+        leaf_names = [n.name for n in tree.leaves]
+        assert leaf_names == ["x1", "x2", "x3", "x4"]
+
+    def test_function_leaves(self, p):
+        tree = p.parse_from_txt("sin ( x1 ) + cos ( x2 )")
+        leaf_names = [n.name for n in tree.leaves]
+        assert leaf_names == ["x1", "x2"]
+
+    def test_leaf_count_matches_operands(self, p):
+        tree = p.parse_from_txt("x1 + x2 * x3 ^ x4")
+        assert len(tree.leaves) == 4
+
+    # ── Pre-order traversal ─────────────────────────────────────────
+
+    def test_preorder_binary(self, p):
+        tree = p.parse_from_txt("x1 + x2")
+        order = [n.name for n in PreOrderIter(tree)]
+        assert order == ["+", "x1", "x2"]
+
+    def test_preorder_precedence(self, p):
+        # x1 + x2 * x3  ->  +(x1, *(x2,x3))
+        tree = p.parse_from_txt("x1 + x2 * x3")
+        order = [n.name for n in PreOrderIter(tree)]
+        assert order == ["+", "x1", "*", "x2", "x3"]
+
+    def test_preorder_left_assoc(self, p):
+        # x1 + x2 + x3  ->  +(+(x1,x2), x3)
+        tree = p.parse_from_txt("x1 + x2 + x3")
+        order = [n.name for n in PreOrderIter(tree)]
+        assert order == ["+", "+", "x1", "x2", "x3"]
+
+    def test_preorder_function(self, p):
+        tree = p.parse_from_txt("sin ( x1 + x2 )")
+        order = [n.name for n in PreOrderIter(tree)]
+        assert order == ["sin", "+", "x1", "x2"]
+
+    # ── Post-order traversal ────────────────────────────────────────
+
+    def test_postorder_binary(self, p):
+        tree = p.parse_from_txt("x1 + x2")
+        order = [n.name for n in PostOrderIter(tree)]
+        assert order == ["x1", "x2", "+"]
+
+    def test_postorder_precedence(self, p):
+        tree = p.parse_from_txt("x1 + x2 * x3")
+        order = [n.name for n in PostOrderIter(tree)]
+        assert order == ["x1", "x2", "x3", "*", "+"]
+
+    def test_postorder_matches_rpn(self, p):
+        # Post-order of an expression tree is reverse-Polish notation
+        # x1 * x2 + x3  ->  +(*(x1,x2), x3)  ->  RPN: x1 x2 * x3 +
+        tree = p.parse_from_txt("x1 * x2 + x3")
+        order = [n.name for n in PostOrderIter(tree)]
+        assert order == ["x1", "x2", "*", "x3", "+"]
+
+    # ── Level-order traversal ───────────────────────────────────────
+
+    def test_levelorder_binary(self, p):
+        tree = p.parse_from_txt("x1 + x2")
+        order = [n.name for n in LevelOrderIter(tree)]
+        assert order == ["+", "x1", "x2"]
+
+    def test_levelorder_precedence(self, p):
+        # +(x1, *(x2,x3))  ->  level0: +, level1: x1 *, level2: x2 x3
+        tree = p.parse_from_txt("x1 + x2 * x3")
+        order = [n.name for n in LevelOrderIter(tree)]
+        assert order == ["+", "x1", "*", "x2", "x3"]
+
+    def test_levelorder_balanced(self, p):
+        # (x1+x2)*(x3+x4) -> level0: *, level1: + +, level2: x1 x2 x3 x4
+        tree = p.parse_from_txt("( x1 + x2 ) * ( x3 + x4 )")
+        order = [n.name for n in LevelOrderIter(tree)]
+        assert order == ["*", "+", "+", "x1", "x2", "x3", "x4"]
+
+    # ── find_by_attr & findall ──────────────────────────────────────
+
+    def test_find_by_attr_variable(self, p):
+        tree = p.parse_from_txt("x1 + x2 * x3")
+        node = find_by_attr(tree, "x2")
+        assert node is not None
+        assert node.parent.name == "*"
+
+    def test_find_by_attr_operator(self, p):
+        tree = p.parse_from_txt("x1 + x2 * x3")
+        node = find_by_attr(tree, "*")
+        assert node is not None
+        assert node.parent.name == "+"
+
+    def test_findall_leaves(self, p):
+        tree = p.parse_from_txt("x1 * x2 + x3")
+        leaves = findall(tree, filter_=lambda n: n.is_leaf)
+        assert [n.name for n in leaves] == ["x1", "x2", "x3"]
+
+    def test_findall_operators(self, p):
+        tree = p.parse_from_txt("x1 + x2 * x3")
+        ops = findall(tree, filter_=lambda n: not n.is_leaf)
+        assert [n.name for n in ops] == ["+", "*"]
+
+    def test_findall_variables_in_complex(self, p):
+        tree = p.parse_from_txt("sin ( x1 ) + x2 * x3")
+        leaves = findall(tree, filter_=lambda n: n.is_leaf)
+        assert [n.name for n in leaves] == ["x1", "x2", "x3"]
+
+    # ── Descendants & ancestors ─────────────────────────────────────
+
+    def test_descendants_count(self, p):
+        tree = p.parse_from_txt("x1 + x2 * x3")
+        # root (+) has 4 descendants: x1, *, x2, x3
+        assert len(tree.descendants) == 4
+
+    def test_ancestors_of_deep_node(self, p):
+        # x1 + x2 * x3 ^ x4  ->  +(x1, *(x2, ^(x3,x4)))
+        tree = p.parse_from_txt("x1 + x2 * x3 ^ x4")
+        x4 = find_by_attr(tree, "x4")
+        ancestor_names = [n.name for n in x4.ancestors]
+        assert ancestor_names == ["+", "*", "^"]
+
+    # ── Siblings ────────────────────────────────────────────────────
+
+    def test_siblings_binary(self, p):
+        tree = p.parse_from_txt("x1 + x2")
+        x1 = find_by_attr(tree, "x1")
+        assert [s.name for s in x1.siblings] == ["x2"]
+
+    def test_siblings_balanced(self, p):
+        tree = p.parse_from_txt("( x1 + x2 ) * ( x3 + x4 )")
+        left_plus = tree.children[0]
+        assert [s.name for s in left_plus.siblings] == ["+"]
+
+    # ── is_root / is_leaf ───────────────────────────────────────────
+
+    def test_root_is_root(self, p):
+        tree = p.parse_from_txt("x1 + x2")
+        assert tree.is_root
+
+    def test_leaves_are_leaves(self, p):
+        tree = p.parse_from_txt("x1 + x2 * x3")
+        for leaf in tree.leaves:
+            assert leaf.is_leaf
+
+    def test_operator_not_leaf(self, p):
+        tree = p.parse_from_txt("x1 + x2 * x3")
+        mul = find_by_attr(tree, "*")
+        assert not mul.is_leaf
+        assert not mul.is_root
